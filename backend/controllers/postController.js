@@ -1,107 +1,123 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
-const Post = require('../models/Post');
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import Post from '../models/Post.js';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// Platform-specific constraints
-const platformRules = {
-  Twitter: 'Max 280 characters. Use hashtags.',
-  LinkedIn: 'Professional tone. 1-3 paragraphs.',
-  Instagram: 'Engaging. Use emojis. Include hashtags.',
-  Facebook: 'Conversational. 2-4 paragraphs.'
-};
-
-exports.generatePost = async (req, res) => {
+export const generateNewPost = async (req, res) => {
   try {
     const { platform, tone, topic, constraints } = req.body;
 
-    // Validate input
-    if (!platform || !tone || !topic) {
-      return res.status(400).json({ 
-        error: 'Platform, tone, and topic are required' 
-      });
-    }
+    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
 
-    // Build prompt
-    const prompt = `You are a social media expert. Create a ${tone.toLowerCase()} post for ${platform} about: "${topic}".
+    const prompt = `Generate a ${tone} social media post for ${platform} about: ${topic}. 
+    ${constraints ? `Additional requirements: ${constraints}` : ''}
+    
+    Platform character limits:
+    - Twitter: 280 characters
+    - LinkedIn: 3000 characters
+    - Instagram: 2200 characters
+    - Facebook: 63206 characters
+    
+    Keep the post concise, engaging, and appropriate for ${platform}. 
+    Do not include any introductory text or quotes - just the post content itself.`;
 
-Platform Rules: ${platformRules[platform]}
-${constraints ? `Additional constraints: ${constraints}` : ''}
-
-Generate ONLY the post content, no explanations.`;
-
-    // Call Gemini API
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
     const result = await model.generateContent(prompt);
     const generatedText = result.response.text();
 
-    // Save to database
-    const newPost = new Post({
+    const newPost = await Post.create({
       platform,
       tone,
       topic,
-      constraints,
+      constraints: constraints || '',
       generatedText,
-      finalText: generatedText
+      finalText: generatedText,
     });
-
-    await newPost.save();
 
     res.status(201).json({
       success: true,
-      post: newPost
+      post: newPost,
     });
-
   } catch (error) {
     console.error('Generation error:', error);
-    res.status(500).json({ 
-      error: 'Failed to generate post',
-      details: error.message 
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate post',
+      error: error.message,
     });
   }
 };
 
-exports.getAllPosts = async (req, res) => {
+export const getAllPosts = async (req, res) => {
   try {
     const posts = await Post.find().sort({ createdAt: -1 });
-    res.json({ success: true, posts });
+    res.status(200).json({
+      success: true,
+      posts,
+    });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch posts' });
+    console.error('Fetch error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch posts',
+      error: error.message,
+    });
   }
 };
 
-exports.updatePost = async (req, res) => {
+export const updatePost = async (req, res) => {
   try {
     const { id } = req.params;
-    const { finalText, approved } = req.body;
+    const updates = req.body;
 
-    const post = await Post.findByIdAndUpdate(
-      id,
-      { finalText, approved },
-      { new: true }
-    );
+    const post = await Post.findByIdAndUpdate(id, updates, {
+      new: true,
+      runValidators: true,
+    });
 
     if (!post) {
-      return res.status(404).json({ error: 'Post not found' });
+      return res.status(404).json({
+        success: false,
+        message: 'Post not found',
+      });
     }
 
-    res.json({ success: true, post });
+    res.status(200).json({
+      success: true,
+      post,
+    });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to update post' });
+    console.error('Update error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update post',
+      error: error.message,
+    });
   }
 };
 
-exports.deletePost = async (req, res) => {
+export const deletePost = async (req, res) => {
   try {
     const { id } = req.params;
+
     const post = await Post.findByIdAndDelete(id);
 
     if (!post) {
-      return res.status(404).json({ error: 'Post not found' });
+      return res.status(404).json({
+        success: false,
+        message: 'Post not found',
+      });
     }
 
-    res.json({ success: true, message: 'Post deleted' });
+    res.status(200).json({
+      success: true,
+      message: 'Post deleted successfully',
+    });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to delete post' });
+    console.error('Delete error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete post',
+      error: error.message,
+    });
   }
 };

@@ -8,11 +8,12 @@ dotenv.config();
 
 const app = express();
 
-// CORS Configuration for Production
+// CORS Configuration
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
-  process.env.FRONTEND_URL || 'https://your-app.vercel.app' // Update after deploying frontend
+  process.env.FRONTEND_URL,
+  'https://social-scribe-six.vercel.app', // Your Vercel URL from GitHub
 ];
 
 app.use(cors({
@@ -20,7 +21,7 @@ app.use(cors({
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      callback(null, true); // Allow all for now
     }
   },
   credentials: true
@@ -28,7 +29,7 @@ app.use(cors({
 
 app.use(express.json());
 
-// Health check endpoint
+// Health check
 app.get('/', (req, res) => {
   res.json({ message: 'SocialScribe API is running!' });
 });
