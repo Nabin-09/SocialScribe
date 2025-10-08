@@ -30,7 +30,6 @@ export default function EnhancedBriefForm({ onGenerate, isLoading }) {
     }
   }, { dependencies: [isLoading], scope: buttonRef });
 
-  // Fade out form on submit
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!formData.topic.trim()) {
@@ -38,7 +37,6 @@ export default function EnhancedBriefForm({ onGenerate, isLoading }) {
       return;
     }
 
-    // Animate form fade
     gsap.to(formRef.current, {
       opacity: 0.5,
       duration: 0.3,
@@ -52,15 +50,15 @@ export default function EnhancedBriefForm({ onGenerate, isLoading }) {
   const platforms = ['Twitter', 'LinkedIn', 'Instagram', 'Facebook'];
 
   return (
-    <div className="bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+    <div className="bg-white/10 backdrop-blur-xl p-6 rounded-xl shadow-2xl border border-white/20">
       {/* Tabs */}
-      <div className="flex mb-6 border-b border-gray-200 dark:border-gray-700">
+      <div className="flex mb-6 border-b border-white/20">
         <button
           onClick={() => setActiveTab('brief')}
           className={`px-4 py-2 font-medium transition-colors ${
             activeTab === 'brief'
-              ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600'
-              : 'text-gray-500 hover:text-gray-700'
+              ? 'text-blue-400 border-b-2 border-blue-400'
+              : 'text-gray-400 hover:text-gray-200'
           }`}
         >
           1. Core Brief
@@ -69,8 +67,8 @@ export default function EnhancedBriefForm({ onGenerate, isLoading }) {
           onClick={() => setActiveTab('constraints')}
           className={`px-4 py-2 font-medium transition-colors ${
             activeTab === 'constraints'
-              ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600'
-              : 'text-gray-500 hover:text-gray-700'
+              ? 'text-blue-400 border-b-2 border-blue-400'
+              : 'text-gray-400 hover:text-gray-200'
           }`}
         >
           2. Constraints
@@ -82,7 +80,7 @@ export default function EnhancedBriefForm({ onGenerate, isLoading }) {
         {activeTab === 'brief' && (
           <>
             <div>
-              <label className="block font-semibold mb-2 text-gray-700 dark:text-gray-200">
+              <label className="block font-semibold mb-2 text-white">
                 Topic / Description
               </label>
               <textarea
@@ -91,10 +89,10 @@ export default function EnhancedBriefForm({ onGenerate, isLoading }) {
                   setFormData({ ...formData, topic: e.target.value })
                 }
                 placeholder="What is this post about? Be specific..."
-                className="w-full p-3 border-2 border-gray-300 dark:border-gray-600 rounded-lg h-32 focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-800 dark:text-gray-100 transition"
+                className="w-full p-3 border-2 border-white/30 bg-white/5 text-white placeholder-gray-400 rounded-lg h-32 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                 maxLength={500}
               />
-              <span className="text-sm text-gray-500">
+              <span className="text-sm text-gray-400">
                 {formData.topic.length}/500
               </span>
             </div>
@@ -105,7 +103,7 @@ export default function EnhancedBriefForm({ onGenerate, isLoading }) {
         {activeTab === 'constraints' && (
           <>
             <div>
-              <label className="block font-semibold mb-2 text-gray-700 dark:text-gray-200">
+              <label className="block font-semibold mb-2 text-white">
                 Platform
               </label>
               <div className="grid grid-cols-2 gap-3">
@@ -119,7 +117,7 @@ export default function EnhancedBriefForm({ onGenerate, isLoading }) {
                     className={`p-3 rounded-lg border-2 font-medium transition-all ${
                       formData.platform === platform
                         ? 'bg-blue-500 text-white border-blue-600 shadow-lg'
-                        : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 hover:border-blue-400'
+                        : 'bg-white/5 text-gray-300 border-white/20 hover:border-blue-400'
                     }`}
                   >
                     {platform}
@@ -129,7 +127,7 @@ export default function EnhancedBriefForm({ onGenerate, isLoading }) {
             </div>
 
             <div>
-              <label className="block font-semibold mb-2 text-gray-700 dark:text-gray-200">
+              <label className="block font-semibold mb-2 text-white">
                 Tone
               </label>
               <div className="grid grid-cols-2 gap-3">
@@ -140,8 +138,8 @@ export default function EnhancedBriefForm({ onGenerate, isLoading }) {
                     onClick={() => setFormData({ ...formData, tone })}
                     className={`p-3 rounded-lg border-2 font-medium transition-all ${
                       formData.tone === tone
-                        ? 'bg-teal-500 text-white border-teal-600 shadow-lg'
-                        : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 hover:border-teal-400'
+                        ? 'bg-purple-500 text-white border-purple-600 shadow-lg'
+                        : 'bg-white/5 text-gray-300 border-white/20 hover:border-purple-400'
                     }`}
                   >
                     {tone}
@@ -151,7 +149,7 @@ export default function EnhancedBriefForm({ onGenerate, isLoading }) {
             </div>
 
             <div>
-              <label className="block font-semibold mb-2 text-gray-700 dark:text-gray-200">
+              <label className="block font-semibold mb-2 text-white">
                 Additional Constraints
               </label>
               <input
@@ -161,7 +159,7 @@ export default function EnhancedBriefForm({ onGenerate, isLoading }) {
                   setFormData({ ...formData, constraints: e.target.value })
                 }
                 placeholder="e.g., Include #AI, mention @company"
-                className="w-full p-3 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent dark:bg-gray-800 dark:text-gray-100"
+                className="w-full p-3 border-2 border-white/30 bg-white/5 text-white placeholder-gray-400 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               />
             </div>
           </>
@@ -172,7 +170,7 @@ export default function EnhancedBriefForm({ onGenerate, isLoading }) {
           ref={buttonRef}
           type="submit"
           disabled={isLoading}
-          className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-lg font-bold text-lg hover:from-blue-700 hover:to-indigo-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all shadow-lg flex items-center justify-center gap-2"
+          className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 rounded-lg font-bold text-lg hover:from-blue-700 hover:to-purple-700 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed transition-all shadow-lg flex items-center justify-center gap-2"
         >
           <Sparkles className="w-5 h-5" />
           {isLoading ? 'Generating Drafts...' : 'Generate Drafts'}
