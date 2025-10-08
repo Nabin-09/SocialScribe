@@ -94,7 +94,7 @@ app.post('/api/generate', async (req, res) => {
       });
     }
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
     const prompt = `Generate a ${tone} social media post for ${platform} about: ${topic}. 
     ${constraints ? `Additional requirements: ${constraints}` : ''}
