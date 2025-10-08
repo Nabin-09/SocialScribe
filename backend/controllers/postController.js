@@ -1,123 +1,83 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import Post from '../models/Post.js';
+import geminiService from '../services/geminiService.js';
+import postService from '../services/postService.js';
+import { HTTP_STATUS } from '../utils/constants.js';
+import logger from '../utils/logger.js';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
-export const generateNewPost = async (req, res) => {
+export const generateNewPost = async (req, res, next) => {
   try {
     const { platform, tone, topic, constraints } = req.body;
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    logger.info('Generate request received', { platform, tone, topic });
 
-    const prompt = `Generate a ${tone} social media post for ${platform} about: ${topic}. 
-    ${constraints ? `Additional requirements: ${constraints}` : ''}
-    
-    Platform character limits:
-    - Twitter: 280 characters
-    - LinkedIn: 3000 characters
-    - Instagram: 2200 characters
-    - Facebook: 63206 characters
-    
-    Keep the post concise, engaging, and appropriate for ${platform}. 
-    Do not include any introductory text or quotes - just the post content itself.`;
+    // Generate content using AI
+    const { text, modelUsed } = await geminiService.generateContent(
+      platform,
+      tone,
+      topic,
+      constraints
+    );
 
-    const result = await model.generateContent(prompt);
-    const generatedText = result.response.text();
-
-    const newPost = await Post.create({
+    // Save to database
+    const post = await postService.createPost({
       platform,
       tone,
       topic,
       constraints: constraints || '',
-      generatedText,
-      finalText: generatedText,
+      generatedText: text,
+      finalText: text,
+      modelUsed,
     });
 
-    res.status(201).json({
-      success: true,
-      post: newPost,
-    });
-  } catch (error) {
-    console.error('Generation error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to generate post',
-      error: error.message,
-    });
-  }
-};
-
-export const getAllPosts = async (req, res) => {
-  try {
-    const posts = await Post.find().sort({ createdAt: -1 });
-    res.status(200).json({
-      success: true,
-      posts,
-    });
-  } catch (error) {
-    console.error('Fetch error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch posts',
-      error: error.message,
-    });
-  }
-};
-
-export const updatePost = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const updates = req.body;
-
-    const post = await Post.findByIdAndUpdate(id, updates, {
-      new: true,
-      runValidators: true,
-    });
-
-    if (!post) {
-      return res.status(404).json({
-        success: false,
-        message: 'Post not found',
-      });
-    }
-
-    res.status(200).json({
+    res.status(HTTP_STATUS.CREATED).json({
       success: true,
       post,
     });
   } catch (error) {
-    console.error('Update error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to update post',
-      error: error.message,
-    });
+    next(error);
   }
 };
 
-export const deletePost = async (req, res) => {
+export const getAllPosts = async (req, res, next) => {
+  try {
+    const posts = await postService.getAllPosts();
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      count: posts.length,
+      posts,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updatePost = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+
+    const post = await postService.updatePost(id, updates);
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      post,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deletePost = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const post = await Post.findByIdAndDelete(id);
+    await postService.deletePost(id);
 
-    if (!post) {
-      return res.status(404).json({
-        success: false,
-        message: 'Post not found',
-      });
-    }
-
-    res.status(200).json({
+    res.status(HTTP_STATUS.OK).json({
       success: true,
       message: 'Post deleted successfully',
     });
   } catch (error) {
-    console.error('Delete error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to delete post',
-      error: error.message,
-    });
+    next(error);
   }
 };
