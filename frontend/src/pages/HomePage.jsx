@@ -108,18 +108,18 @@ export default function HomePage() {
 
   return (
     <>
-      {/* Hero Section - FULLY RESPONSIVE */}
-      <section id="home" className="pt-24 sm:pt-28 md:pt-32 pb-12 sm:pb-16 px-4 sm:px-6">
+      {/* Hero Section - FIXED SPACING */}
+      <section id="home" className="pt-24 sm:pt-28 md:pt-32 pb-16 sm:pb-20 px-4 sm:px-6">
         <div className="container mx-auto max-w-6xl">
-          <div className="text-center mb-12 sm:mb-16">
-            {/* Animated Gradient Hero Text - RESPONSIVE SIZES */}
-            <div className="mb-12 sm:mb-16 md:mb-20">
-              <AnimatedGradientText className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl leading-tight px-2 sm:px-4">
+          <div className="text-center mb-16 sm:mb-20">
+            {/* Animated Gradient Hero Text - EXTRA BOTTOM SPACING */}
+            <div className="mb-20 sm:mb-24 md:mb-28 pb-8">
+              <AnimatedGradientText className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl leading-tight px-2 sm:px-4 pb-4">
                 Built for AI Intelligence.
               </AnimatedGradientText>
             </div>
             
-            {/* Subtitle - RESPONSIVE */}
+            {/* Subtitle */}
             <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-white/90 max-w-3xl mx-auto font-medium drop-shadow-lg mb-2 sm:mb-3 px-4">
               Generate brand-safe social media posts with AI assistance and human oversight.
             </p>
