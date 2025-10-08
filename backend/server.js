@@ -4,12 +4,9 @@ import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// Load environment variables
 dotenv.config();
 
 const app = express();
-
-// CORS - Allow all origins
 app.use(cors());
 app.use(express.json());
 
@@ -36,80 +33,94 @@ const postSchema = new mongoose.Schema({
     required: true,
     enum: ['Professional', 'Casual', 'Playful', 'Inspirational'],
   },
-  topic: {
-    type: String,
-    required: true,
-  },
-  constraints: {
-    type: String,
-    default: '',
-  },
-  generatedText: {
-    type: String,
-    required: true,
-  },
-  finalText: {
-    type: String,
-    required: true,
-  },
-  approved: {
-    type: Boolean,
-    default: false,
-  },
+  topic: String,
+  constraints: String,
+  generatedText: String,
+  finalText: String,
+  approved: { type: Boolean, default: false },
 }, { timestamps: true });
 
 const Post = mongoose.model('Post', postSchema);
 
-// Initialize Gemini AI
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
-// ==================== ROUTES ====================
+// Initialize Gemini with error handling
+let genAI;
+try {
+  genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  console.log('✅ Gemini AI initialized');
+} catch (error) {
+  console.error('❌ Failed to initialize Gemini AI:', error);
+}
 
 // Health check
 app.get('/', (req, res) => {
   res.json({ 
     message: '✅ SocialScribe API is running!',
     version: '1.0.0',
-    endpoints: {
-      health: '/',
-      generate: '/api/generate',
-      getAllPosts: '/api/posts',
-      updatePost: '/api/posts/:id',
-      deletePost: '/api/posts/:id'
-    }
+    geminiConfigured: !!process.env.GEMINI_API_KEY,
+    mongodbConnected: mongoose.connection.readyState === 1
   });
 });
 
-// Generate new post
+// Generate new post with FIXED model
 app.post('/api/generate', async (req, res) => {
   try {
-    console.log('📝 Generate request received:', req.body);
+    console.log('📝 Generate request:', req.body);
     
     const { platform, tone, topic, constraints } = req.body;
 
     if (!platform || !tone || !topic) {
       return res.status(400).json({
         success: false,
-        message: 'Missing required fields: platform, tone, topic'
+        message: 'Missing required fields'
       });
     }
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(500).json({
+        success: false,
+        message: 'API key not configured'
+      });
+    }
 
-    const prompt = `Generate a ${tone} social media post for ${platform} about: ${topic}. 
-    ${constraints ? `Additional requirements: ${constraints}` : ''}
+    console.log('🤖 Calling Gemini API with model: gemini-1.5-flash');
     
-    Platform character limits:
-    - Twitter: 280 characters
-    - LinkedIn: 3000 characters
-    - Instagram: 2200 characters
-    - Facebook: 63206 characters
+    // Try multiple model names in order of preference
+    let model;
+    const modelNames = ['gemini-1.5-flash', 'gemini-1.5-pro', 'models/gemini-1.5-flash'];
     
-    Keep the post concise, engaging, and appropriate for ${platform}. 
-    Do not include any introductory text or quotes - just the post content itself.`;
+    for (const modelName of modelNames) {
+      try {
+        model = genAI.getGenerativeModel({ model: modelName });
+        console.log(`✅ Using model: ${modelName}`);
+        break;
+      } catch (err) {
+        console.log(`⚠️ Model ${modelName} not available, trying next...`);
+      }
+    }
 
+    if (!model) {
+      throw new Error('No available Gemini model found');
+    }
+
+    const prompt = `You are a professional social media content creator. Generate a ${tone.toLowerCase()} social media post for ${platform} about the following topic:
+
+Topic: ${topic}
+${constraints ? `Additional requirements: ${constraints}` : ''}
+
+Guidelines:
+- For Twitter: Keep under 280 characters
+- For LinkedIn: Professional tone, can be longer (up to 3000 chars)
+- For Instagram: Engaging, visual, under 2200 characters
+- For Facebook: Conversational, under 63206 characters
+
+Write ONLY the post content. Do not include any explanations, quotes, or introductory text.`;
+
+    console.log('⏳ Waiting for Gemini response...');
     const result = await model.generateContent(prompt);
-    const generatedText = result.response.text();
+    const response = await result.response;
+    const generatedText = response.text();
+    
+    console.log('✅ Generated text length:', generatedText.length);
 
     const newPost = await Post.create({
       platform,
@@ -120,18 +131,22 @@ app.post('/api/generate', async (req, res) => {
       finalText: generatedText,
     });
 
-    console.log('✅ Post created:', newPost._id);
+    console.log('✅ Post saved:', newPost._id);
 
     res.status(201).json({
       success: true,
       post: newPost,
     });
+
   } catch (error) {
-    console.error('❌ Generation error:', error);
+    console.error('❌ Generation error:', error.message);
+    console.error('Full error:', error);
+    
     res.status(500).json({
       success: false,
       message: 'Failed to generate post',
       error: error.message,
+      hint: 'Please check if your Gemini API key is valid at https://makersuite.google.com/app/apikey'
     });
   }
 });
@@ -140,77 +155,40 @@ app.post('/api/generate', async (req, res) => {
 app.get('/api/posts', async (req, res) => {
   try {
     const posts = await Post.find().sort({ createdAt: -1 });
-    res.status(200).json({
-      success: true,
-      posts,
-    });
+    res.json({ success: true, posts });
   } catch (error) {
-    console.error('❌ Fetch error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch posts',
-      error: error.message,
-    });
+    console.error('Fetch error:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
 // Update post
 app.put('/api/posts/:id', async (req, res) => {
   try {
-    const { id } = req.params;
-    const updates = req.body;
-
-    const post = await Post.findByIdAndUpdate(id, updates, {
-      new: true,
-      runValidators: true,
-    });
-
+    const post = await Post.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    );
     if (!post) {
-      return res.status(404).json({
-        success: false,
-        message: 'Post not found',
-      });
+      return res.status(404).json({ success: false, message: 'Post not found' });
     }
-
-    res.status(200).json({
-      success: true,
-      post,
-    });
+    res.json({ success: true, post });
   } catch (error) {
-    console.error('❌ Update error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to update post',
-      error: error.message,
-    });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
 // Delete post
 app.delete('/api/posts/:id', async (req, res) => {
   try {
-    const { id } = req.params;
-
-    const post = await Post.findByIdAndDelete(id);
-
+    const post = await Post.findByIdAndDelete(req.params.id);
     if (!post) {
-      return res.status(404).json({
-        success: false,
-        message: 'Post not found',
-      });
+      return res.status(404).json({ success: false, message: 'Post not found' });
     }
-
-    res.status(200).json({
-      success: true,
-      message: 'Post deleted successfully',
-    });
+    res.json({ success: true, message: 'Post deleted' });
   } catch (error) {
-    console.error('❌ Delete error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to delete post',
-      error: error.message,
-    });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -218,14 +196,7 @@ app.delete('/api/posts/:id', async (req, res) => {
 app.use((req, res) => {
   res.status(404).json({
     success: false,
-    message: `Route ${req.method} ${req.url} not found`,
-    availableRoutes: [
-      'GET /',
-      'POST /api/generate',
-      'GET /api/posts',
-      'PUT /api/posts/:id',
-      'DELETE /api/posts/:id'
-    ]
+    message: `Route ${req.method} ${req.url} not found`
   });
 });
 
@@ -235,5 +206,6 @@ const PORT = process.env.PORT || 5000;
 connectDB().then(() => {
   app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
   });
 });
